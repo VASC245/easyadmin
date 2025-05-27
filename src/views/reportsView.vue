@@ -25,11 +25,15 @@
           Descargar PDF
         </button>
       </div>
+&nbsp;
+&nbsp;
 
       <!-- Periodo actual -->
       <div v-if="selectedWeek" class="text-center text-yellow-700 font-semibold">
         Reporte para la semana {{ selectedWeek }} ({{ formatDate(startDateRef) }} - {{ formatDate(endDateRef) }})
       </div>
+&nbsp;
+&nbsp;
 
       <!-- Reporte generado en pantalla -->
       <div v-if="reportGenerated" class="mt-6 bg-yellow-50 rounded-lg p-6 shadow space-y-4 max-w-4xl mx-auto">
@@ -49,6 +53,8 @@
             </p>
           </div>
         </div>
+&nbsp;
+&nbsp;
 
         <div>
           <h4 class="font-semibold text-yellow-800 mt-6 mb-2">Desglose de Ventas de Bebidas Calientes</h4>
@@ -62,6 +68,8 @@
             </li>
           </ul>
         </div>
+&nbsp;
+&nbsp;
 
         <div>
           <h4 class="font-semibold text-yellow-800 mt-6 mb-2">Desglose de Ventas de Bebidas Frías</h4>
@@ -75,6 +83,8 @@
             </li>
           </ul>
         </div>
+&nbsp;
+&nbsp;
 
         <div>
           <h4 class="font-semibold text-yellow-800 mt-6 mb-2">Desglose de Ventas de Sopas</h4>
@@ -88,6 +98,8 @@
             </li>
           </ul>
         </div>
+&nbsp;
+&nbsp;
 
         <div>
           <h4 class="font-semibold text-yellow-800 mt-6 mb-2">Desglose Detallado de Gastos</h4>
@@ -113,6 +125,8 @@
             </tbody>
           </table>
         </div>
+&nbsp;
+&nbsp;
 
         <div>
           <h4 class="font-semibold text-yellow-800 mt-6 mb-2">Desglose Detallado de Ingresos</h4>
@@ -141,11 +155,13 @@
   </section>
 </template>
 
+
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { supabase } from '../supabase'
+
 
 const selectedWeek = ref('')
 const incomes = ref([])
@@ -154,11 +170,13 @@ const bebidasCalientes = ref([]) // Hot beverages
 const bebidasFrias = ref([])      // Cold beverages
 const soups = ref([])             // Soups
 
+
 const reportData = reactive({
   totalIncome: 0,
   totalExpenses: 0,
   netBalance: 0,
 })
+
 
 const drinkSales = ref([])         // Hot beverages sales aggregated
 const coldDrinkSales = ref([])     // Cold beverages sales aggregated
@@ -170,12 +188,19 @@ const startDateRef = ref(null)
 const endDateRef = ref(null)
 
 const formatCurrency = (val) => val.toLocaleString(undefined, { style: 'currency', currency: 'USD' })
-const formatDate = (d) => new Date(d).toLocaleDateString()
+const formatDate = (d) => {
+  const date = new Date(d)
+  // Adjust date for timezone offset to display correct day
+  date.setHours(date.getHours() + date.getTimezoneOffset() / 60)
+  return date.toLocaleDateString()
+}
+
 
 const reportWeekLabel = computed(() => {
   if (!selectedWeek.value) return 'Selecciona una semana'
   return selectedWeek.value
 })
+
 
 async function fetchData() {
   const { data: incomeData, error: incomeError } = await supabase.from('incomes').select('*')
@@ -185,12 +210,14 @@ async function fetchData() {
   }
   incomes.value = incomeData || []
 
+
   const { data: expenseData, error: expenseError } = await supabase.from('expenses').select('*')
   if (expenseError) {
     alert('Error al cargar gastos: ' + expenseError.message)
     return
   }
   expenses.value = expenseData || []
+
 
   const { data: hotBeverageData, error: hotBeverageError } = await supabase.from('bebidas_calientes').select('*')
   if (hotBeverageError) {
@@ -199,12 +226,14 @@ async function fetchData() {
   }
   bebidasCalientes.value = hotBeverageData || []
 
+
   const { data: coldBeverageData, error: coldBeverageError } = await supabase.from('beverages').select('*')
   if (coldBeverageError) {
     alert('Error al cargar ventas de bebidas frías: ' + coldBeverageError.message)
     return
   }
   bebidasFrias.value = coldBeverageData || []
+
 
   const { data: soupData, error: soupError } = await supabase.from('sopas').select('*')
   if (soupError) {
@@ -214,6 +243,7 @@ async function fetchData() {
   soups.value = soupData || []
 }
 
+
 function parseWeekYear(weekStr) {
   if (!weekStr) return null
   const [year, week] = weekStr.split('-W').map(Number)
@@ -221,15 +251,19 @@ function parseWeekYear(weekStr) {
   return { year, week }
 }
 
+
 function getISOWeekStart(year, week) {
   const simple = new Date(year, 0, 1 + (week - 1) * 7)
   const day = simple.getDay()
+  // Calculate the Monday of the ISO week
   const ISOweekStart = day <= 4 ? new Date(simple.setDate(simple.getDate() - simple.getDay() + 1)) : new Date(simple.setDate(simple.getDate() + 8 - simple.getDay()))
   return ISOweekStart
 }
 
+
 async function generateReport() {
   await fetchData()
+
 
   const res = parseWeekYear(selectedWeek.value)
   if (!res) {
@@ -237,40 +271,53 @@ async function generateReport() {
     return
   }
 
+
   const startDate = getISOWeekStart(res.year, res.week)
   const endDate = new Date(startDate)
   endDate.setDate(startDate.getDate() + 6)
   startDateRef.value = startDate
   endDateRef.value = endDate
 
+
   incomesInPeriod.value = incomes.value.filter((i) => {
     const d = new Date(i.date)
+    d.setHours(d.getHours() + d.getTimezoneOffset() / 60)
     return d >= startDate && d <= endDate
   })
+
 
   expensesInPeriod.value = expenses.value.filter((e) => {
     const d = new Date(e.date)
+    d.setHours(d.getHours() + d.getTimezoneOffset() / 60)
     return d >= startDate && d <= endDate
   })
+
 
   const bebidasHotInPeriod = bebidasCalientes.value.filter(b => {
     const d = new Date(b.date)
+    d.setHours(d.getHours() + d.getTimezoneOffset() / 60)
     return d >= startDate && d <= endDate
   })
+
 
   const bebidasColdInPeriod = bebidasFrias.value.filter(b => {
     const d = new Date(b.date)
+    d.setHours(d.getHours() + d.getTimezoneOffset() / 60)
     return d >= startDate && d <= endDate
   })
 
+
   const soupsInPeriod = soups.value.filter(s => {
     const d = new Date(s.date)
+    d.setHours(d.getHours() + d.getTimezoneOffset() / 60)
     return d >= startDate && d <= endDate
   })
+
 
   reportData.totalIncome = incomesInPeriod.value.reduce((a, i) => a + (i.amount || 0), 0)
   reportData.totalExpenses = expensesInPeriod.value.reduce((a, e) => a + (e.amount || 0), 0)
   reportData.netBalance = reportData.totalIncome - reportData.totalExpenses
+
 
   // Aggregate hot beverages sales by beverage type
   const drinkMap = {}
@@ -283,6 +330,7 @@ async function generateReport() {
   }
   drinkSales.value = Object.entries(drinkMap).map(([bev, qty]) => ({ beverage: bev, quantity: qty }))
 
+
   // Aggregate cold beverages sales by beverage type
   const coldDrinkMap = {}
   for (const sale of bebidasColdInPeriod) {
@@ -293,6 +341,7 @@ async function generateReport() {
     }
   }
   coldDrinkSales.value = Object.entries(coldDrinkMap).map(([bev, qty]) => ({ beverage: bev, quantity: qty }))
+
 
   // Aggregate soups sales by soup type
   const soupMap = {}
@@ -305,8 +354,10 @@ async function generateReport() {
   }
   soupSales.value = Object.entries(soupMap).map(([soup, qty]) => ({ soup, quantity: qty }))
 
+
   reportGenerated.value = true
 }
+
 
 function downloadPdf() {
   const doc = new jsPDF()
@@ -320,6 +371,7 @@ function downloadPdf() {
   doc.text(`Gasto Total: ${formatCurrency(reportData.totalExpenses)}`, 14, 56)
   doc.text(`Balance Neto: ${formatCurrency(reportData.netBalance)}`, 14, 64)
 
+
   // Bebidas Calientes
   doc.setFontSize(14)
   doc.text('Desglose de Ventas de Bebidas Calientes:', 14, 78)
@@ -331,6 +383,7 @@ function downloadPdf() {
     styles: { fontSize: 10 },
     headStyles: { fillColor: [255, 221, 89] }
   })
+
 
   // Bebidas Frías
   const yAfterHotDrinks = doc.lastAutoTable.finalY + 10
@@ -345,6 +398,7 @@ function downloadPdf() {
     headStyles: { fillColor: [255, 221, 89] }
   })
 
+
   // Sopas
   const yAfterColdDrinks = doc.lastAutoTable.finalY + 10
   doc.setFontSize(14)
@@ -357,6 +411,7 @@ function downloadPdf() {
     styles: { fontSize: 10 },
     headStyles: { fillColor: [255, 221, 89] }
   })
+
 
   // Gastos Detallados
   const yAfterSoups = doc.lastAutoTable.finalY + 10
@@ -371,6 +426,7 @@ function downloadPdf() {
     headStyles: { fillColor: [255, 221, 89] }
   })
 
+
   // Ingresos Detallados
   const yAfterExpenses = doc.lastAutoTable.finalY + 10
   doc.setFontSize(14)
@@ -384,12 +440,15 @@ function downloadPdf() {
     headStyles: { fillColor: [255, 221, 89] }
   })
 
+
   doc.save(`reporte_semanal_${selectedWeek.value}.pdf`)
 }
+
 
 onMounted(() => {
   setCurrentWeek()
 })
+
 
 function setCurrentWeek() {
   const currentDate = new Date()
@@ -397,6 +456,7 @@ function setCurrentWeek() {
   const currentWeek = getISOWeek(currentDate)
   selectedWeek.value = `${currentYear}-W${currentWeek.toString().padStart(2, '0')}`
 }
+
 
 function getISOWeek(date) {
   const tempDate = new Date(date.getTime())
@@ -406,6 +466,8 @@ function getISOWeek(date) {
   return Math.ceil((((tempDate - yearStart) / 86400000) + 1) / 7)
 }
 </script>
+&nbsp;
+&nbsp;
 
 <style scoped>
 table {
@@ -429,3 +491,5 @@ tbody tr {
   table-layout: fixed;
 }
 </style>
+&nbsp;
+&nbsp;
