@@ -82,7 +82,12 @@ const form = reactive({
   quantity: 1,
 })
 
-const formatDate = (date) => new Date(date).toLocaleDateString()
+const formatDate = (date) => {
+  const d = new Date(date);
+  // Adjust the date to ensure it displays correctly
+  d.setHours(d.getHours() + d.getTimezoneOffset() / 60);
+  return d.toLocaleDateString(); // Ensure consistent formatting
+}
 
 async function fetchBeverages() {
   const { data, error } = await supabase.from('beverages').select('*').order('date', { ascending: false })

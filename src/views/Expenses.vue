@@ -88,7 +88,13 @@ const form = reactive({
   description: '',
 })
 
-const formatDate = (date) => new Date(date).toLocaleDateString()
+const formatDate = (date) => {
+  const d = new Date(date);
+  // Adjust the date to ensure it displays correctly
+  d.setHours(d.getHours() + d.getTimezoneOffset() / 60);
+  return d.toLocaleDateString(); // Ensure consistent formatting
+}
+
 const formatCurrency = (val) =>
   val.toLocaleString(undefined, { style: 'currency', currency: 'USD' })
 
@@ -139,14 +145,15 @@ async function addExpense() {
 }
 
 async function deleteExpense(id) {
-  if (!confirm('Eliminar gasto?')) return
-  const { error } = await supabase.from('expenses').delete().eq('id', id)
-  if (error) {
-    alert('Error eliminando gasto: ' + error.message)
-    return
+  if (confirm('Eliminar gasto?')) {
+    const { error } = await supabase.from('expenses').delete().eq('id', id)
+    if (error) {
+      alert('Error eliminando gasto: ' + error.message)
+      return
+    }
+    expenses.value = expenses.value.filter(e => e.id !== id)
+    alert('Gasto eliminado.')
   }
-  expenses.value = expenses.value.filter(e => e.id !== id)
-  alert('Gasto eliminado.')
 }
 
 const filteredExpensesSorted = computed(() => {
@@ -162,3 +169,7 @@ function clearFilter() {
 
 onMounted(fetchExpenses)
 </script>
+
+<style scoped>
+/* Optional styles for scrollable table or specific styling */
+</style>

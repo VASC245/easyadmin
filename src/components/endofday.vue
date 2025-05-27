@@ -83,7 +83,7 @@ const reports = ref([])
 const filterDate = ref('')
 
 const form = reactive({
-  date: today,
+  date: today, // Set the initial date to today
   cash: 0,
   transfer: 0,
   dataAustro: 0,
@@ -91,14 +91,20 @@ const form = reactive({
   deUna: 0,
 })
 
-const formatDate = (date) => new Date(date).toLocaleDateString()
+const formatDate = (date) => {
+  const d = new Date(date);
+  // Adjust the date to ensure it displays correctly
+  d.setHours(d.getHours() + d.getTimezoneOffset() / 60);
+  return d.toLocaleDateString(); // Ensure consistent formatting
+}
+
 const formatCurrency = (val) =>
   val.toLocaleString(undefined, { style: 'currency', currency: 'USD' })
 
 async function fetchReports() {
   let query = supabase.from('end_of_day_reports').select('*').order('date', { ascending: false })
   if (filterDate.value) {
-    query = query.eq('date', filterDate.value)
+    query = query.eq('date', filterDate.value); // Ensure the filter matches the date format
   }
   const { data, error } = await query
   if (error) {
@@ -116,7 +122,7 @@ async function saveEndOfDay() {
   try {
     // Insert report
     const { error: insertErr } = await supabase.from('end_of_day_reports').upsert({
-      date: form.date,
+      date: form.date, // Ensure the date is saved correctly
       cash: form.cash,
       transfer: form.transfer,
       data_austro: form.dataAustro,

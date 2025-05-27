@@ -123,7 +123,12 @@ const form = reactive({
 
 const filterDate = ref('')
 
-const formatDate = (d) => new Date(d).toLocaleDateString()
+const formatDate = (d) => {
+  const date = new Date(d);
+  // Adjust the date to ensure it displays correctly
+  date.setHours(date.getHours() + date.getTimezoneOffset() / 60);
+  return date.toLocaleDateString(); // Ensure consistent formatting
+}
 
 // Carga inicial de datos desde Supabase
 async function fetchBeveragesHot() {
