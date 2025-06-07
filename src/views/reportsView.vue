@@ -25,15 +25,11 @@
           Descargar PDF
         </button>
       </div>
-&nbsp;
-&nbsp;
 
       <!-- Periodo actual -->
       <div v-if="selectedWeek" class="text-center text-yellow-700 font-semibold">
         Reporte para la semana {{ selectedWeek }} ({{ formatDate(startDateRef) }} - {{ formatDate(endDateRef) }})
       </div>
-&nbsp;
-&nbsp;
 
       <!-- Reporte generado en pantalla -->
       <div v-if="reportGenerated" class="mt-6 bg-yellow-50 rounded-lg p-6 shadow space-y-4 max-w-4xl mx-auto">
@@ -53,8 +49,6 @@
             </p>
           </div>
         </div>
-&nbsp;
-&nbsp;
 
         <div>
           <h4 class="font-semibold text-yellow-800 mt-6 mb-2">Desglose de Ventas de Bebidas Calientes</h4>
@@ -68,8 +62,6 @@
             </li>
           </ul>
         </div>
-&nbsp;
-&nbsp;
 
         <div>
           <h4 class="font-semibold text-yellow-800 mt-6 mb-2">Desglose de Ventas de Bebidas Frías</h4>
@@ -83,8 +75,6 @@
             </li>
           </ul>
         </div>
-&nbsp;
-&nbsp;
 
         <div>
           <h4 class="font-semibold text-yellow-800 mt-6 mb-2">Desglose de Ventas de Sopas</h4>
@@ -98,8 +88,6 @@
             </li>
           </ul>
         </div>
-&nbsp;
-&nbsp;
 
         <div>
           <h4 class="font-semibold text-yellow-800 mt-6 mb-2">Desglose Detallado de Gastos</h4>
@@ -125,36 +113,51 @@
             </tbody>
           </table>
         </div>
-&nbsp;
-&nbsp;
 
+        <!-- Nueva sección para cierres de caja -->
         <div>
-          <h4 class="font-semibold text-yellow-800 mt-6 mb-2">Desglose Detallado de Ingresos</h4>
+          <h4 class="font-semibold text-yellow-800 mt-6 mb-2">Desglose Detallado de Cierres de Caja</h4>
           <table class="w-full border-collapse text-left text-yellow-900 max-h-48 overflow-y-auto block">
             <thead class="bg-yellow-200 sticky top-0 drop-shadow">
               <tr>
                 <th class="px-4 py-2 border-b border-yellow-400">Fecha</th>
-                <th class="px-4 py-2 border-b border-yellow-400">Descripción</th>
-                <th class="px-4 py-2 border-b border-yellow-400 text-right">Cantidad</th>
+                <th class="px-4 py-2 border-b border-yellow-400 text-right">Efectivo</th>
+                <th class="px-4 py-2 border-b border-yellow-400 text-right">Transferencia</th>
+                <th class="px-4 py-2 border-b border-yellow-400 text-right">Data Austro</th>
+                <th class="px-4 py-2 border-b border-yellow-400 text-right">Data Fast</th>
+                <th class="px-4 py-2 border-b border-yellow-400 text-right">De Una</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="income in incomesInPeriod" :key="income.id" class="even:bg-yellow-50">
-                <td class="px-4 py-2">{{ formatDate(income.date) }}</td>
-                <td class="px-4 py-2">{{ income.description || '-' }}</td>
-                <td class="px-4 py-2 text-right">{{ formatCurrency(income.amount) }}</td>
+              <tr v-for="close in closesInPeriod" :key="close.date" class="even:bg-yellow-50">
+                <td class="px-4 py-2">{{ formatDate(close.date) }}</td>
+                <td class="px-4 py-2 text-right">{{ formatCurrency(close.cash) }}</td>
+                <td class="px-4 py-2 text-right">{{ formatCurrency(close.transfer) }}</td>
+                <td class="px-4 py-2 text-right">{{ formatCurrency(close.data_austro) }}</td>
+                <td class="px-4 py-2 text-right">{{ formatCurrency(close.data_fast) }}</td>
+                <td class="px-4 py-2 text-right">{{ formatCurrency(close.de_una) }}</td>
               </tr>
-              <tr v-if="incomesInPeriod.length === 0">
-                <td colspan="3" class="text-center py-4 italic text-yellow-700">No hay ingresos en esta semana.</td>
+              <tr v-if="closesInPeriod.length === 0">
+                <td colspan="6" class="text-center py-4 italic text-yellow-700">No hay cierres de caja en esta semana.</td>
               </tr>
             </tbody>
+            <tfoot class="font-semibold bg-yellow-100">
+              <tr>
+                <td class="px-4 py-2">Total</td>
+                <td class="px-4 py-2 text-right">{{ formatCurrency(closeTotals.cash) }}</td>
+                <td class="px-4 py-2 text-right">{{ formatCurrency(closeTotals.transfer) }}</td>
+                <td class="px-4 py-2 text-right">{{ formatCurrency(closeTotals.data_austro) }}</td>
+                <td class="px-4 py-2 text-right">{{ formatCurrency(closeTotals.data_fast) }}</td>
+                <td class="px-4 py-2 text-right">{{ formatCurrency(closeTotals.de_una) }}</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
+
       </div>
     </div>
   </section>
 </template>
-
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
@@ -162,14 +165,13 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { supabase } from '../supabase'
 
-
 const selectedWeek = ref('')
 const incomes = ref([])
 const expenses = ref([])
 const bebidasCalientes = ref([]) // Hot beverages
 const bebidasFrias = ref([])      // Cold beverages
 const soups = ref([])             // Soups
-
+const closes = ref([])            // Cierres de caja
 
 const reportData = reactive({
   totalIncome: 0,
@@ -177,13 +179,20 @@ const reportData = reactive({
   netBalance: 0,
 })
 
-
 const drinkSales = ref([])         // Hot beverages sales aggregated
 const coldDrinkSales = ref([])     // Cold beverages sales aggregated
 const soupSales = ref([])          // Soups sales aggregated
 const reportGenerated = ref(false)
 const incomesInPeriod = ref([])
 const expensesInPeriod = ref([])
+const closesInPeriod = ref([])
+const closeTotals = reactive({
+  cash: 0,
+  transfer: 0,
+  data_austro: 0,
+  data_fast: 0,
+  de_una: 0,
+})
 const startDateRef = ref(null)
 const endDateRef = ref(null)
 
@@ -195,12 +204,10 @@ const formatDate = (d) => {
   return date.toLocaleDateString()
 }
 
-
 const reportWeekLabel = computed(() => {
   if (!selectedWeek.value) return 'Selecciona una semana'
   return selectedWeek.value
 })
-
 
 async function fetchData() {
   const { data: incomeData, error: incomeError } = await supabase.from('incomes').select('*')
@@ -210,14 +217,12 @@ async function fetchData() {
   }
   incomes.value = incomeData || []
 
-
   const { data: expenseData, error: expenseError } = await supabase.from('expenses').select('*')
   if (expenseError) {
     alert('Error al cargar gastos: ' + expenseError.message)
     return
   }
   expenses.value = expenseData || []
-
 
   const { data: hotBeverageData, error: hotBeverageError } = await supabase.from('bebidas_calientes').select('*')
   if (hotBeverageError) {
@@ -226,7 +231,6 @@ async function fetchData() {
   }
   bebidasCalientes.value = hotBeverageData || []
 
-
   const { data: coldBeverageData, error: coldBeverageError } = await supabase.from('beverages').select('*')
   if (coldBeverageError) {
     alert('Error al cargar ventas de bebidas frías: ' + coldBeverageError.message)
@@ -234,15 +238,20 @@ async function fetchData() {
   }
   bebidasFrias.value = coldBeverageData || []
 
-
   const { data: soupData, error: soupError } = await supabase.from('sopas').select('*')
   if (soupError) {
     alert('Error al cargar ventas de sopas: ' + soupError.message)
     return
   }
   soups.value = soupData || []
-}
 
+  const { data: closesData, error: closesError } = await supabase.from('end_of_day_reports').select('*')
+  if (closesError) {
+    alert('Error al cargar cierres de caja: ' + closesError.message)
+    return
+  }
+  closes.value = closesData || []
+}
 
 function parseWeekYear(weekStr) {
   if (!weekStr) return null
@@ -250,7 +259,6 @@ function parseWeekYear(weekStr) {
   if (!year || !week) return null
   return { year, week }
 }
-
 
 function getISOWeekStart(year, week) {
   const simple = new Date(year, 0, 1 + (week - 1) * 7)
@@ -260,10 +268,8 @@ function getISOWeekStart(year, week) {
   return ISOweekStart
 }
 
-
 async function generateReport() {
   await fetchData()
-
 
   const res = parseWeekYear(selectedWeek.value)
   if (!res) {
@@ -271,13 +277,11 @@ async function generateReport() {
     return
   }
 
-
   const startDate = getISOWeekStart(res.year, res.week)
   const endDate = new Date(startDate)
   endDate.setDate(startDate.getDate() + 6)
   startDateRef.value = startDate
   endDateRef.value = endDate
-
 
   incomesInPeriod.value = incomes.value.filter((i) => {
     const d = new Date(i.date)
@@ -285,13 +289,11 @@ async function generateReport() {
     return d >= startDate && d <= endDate
   })
 
-
   expensesInPeriod.value = expenses.value.filter((e) => {
     const d = new Date(e.date)
     d.setHours(d.getHours() + d.getTimezoneOffset() / 60)
     return d >= startDate && d <= endDate
   })
-
 
   const bebidasHotInPeriod = bebidasCalientes.value.filter(b => {
     const d = new Date(b.date)
@@ -299,13 +301,11 @@ async function generateReport() {
     return d >= startDate && d <= endDate
   })
 
-
   const bebidasColdInPeriod = bebidasFrias.value.filter(b => {
     const d = new Date(b.date)
     d.setHours(d.getHours() + d.getTimezoneOffset() / 60)
     return d >= startDate && d <= endDate
   })
-
 
   const soupsInPeriod = soups.value.filter(s => {
     const d = new Date(s.date)
@@ -313,11 +313,15 @@ async function generateReport() {
     return d >= startDate && d <= endDate
   })
 
+  closesInPeriod.value = closes.value.filter(c => {
+    const d = new Date(c.date)
+    d.setHours(d.getHours() + d.getTimezoneOffset() / 60)
+    return d >= startDate && d <= endDate
+  })
 
   reportData.totalIncome = incomesInPeriod.value.reduce((a, i) => a + (i.amount || 0), 0)
   reportData.totalExpenses = expensesInPeriod.value.reduce((a, e) => a + (e.amount || 0), 0)
   reportData.netBalance = reportData.totalIncome - reportData.totalExpenses
-
 
   // Aggregate hot beverages sales by beverage type
   const drinkMap = {}
@@ -330,7 +334,6 @@ async function generateReport() {
   }
   drinkSales.value = Object.entries(drinkMap).map(([bev, qty]) => ({ beverage: bev, quantity: qty }))
 
-
   // Aggregate cold beverages sales by beverage type
   const coldDrinkMap = {}
   for (const sale of bebidasColdInPeriod) {
@@ -341,7 +344,6 @@ async function generateReport() {
     }
   }
   coldDrinkSales.value = Object.entries(coldDrinkMap).map(([bev, qty]) => ({ beverage: bev, quantity: qty }))
-
 
   // Aggregate soups sales by soup type
   const soupMap = {}
@@ -354,10 +356,15 @@ async function generateReport() {
   }
   soupSales.value = Object.entries(soupMap).map(([soup, qty]) => ({ soup, quantity: qty }))
 
+  // Calculate totals for closesInPeriod
+  closeTotals.cash = closesInPeriod.value.reduce((a, c) => a + (c.cash || 0), 0)
+  closeTotals.transfer = closesInPeriod.value.reduce((a, c) => a + (c.transfer || 0), 0)
+  closeTotals.data_austro = closesInPeriod.value.reduce((a, c) => a + (c.data_austro || 0), 0)
+  closeTotals.data_fast = closesInPeriod.value.reduce((a, c) => a + (c.data_fast || 0), 0)
+  closeTotals.de_una = closesInPeriod.value.reduce((a, c) => a + (c.de_una || 0), 0)
 
   reportGenerated.value = true
 }
-
 
 function downloadPdf() {
   const doc = new jsPDF()
@@ -371,7 +378,6 @@ function downloadPdf() {
   doc.text(`Gasto Total: ${formatCurrency(reportData.totalExpenses)}`, 14, 56)
   doc.text(`Balance Neto: ${formatCurrency(reportData.netBalance)}`, 14, 64)
 
-
   // Bebidas Calientes
   doc.setFontSize(14)
   doc.text('Desglose de Ventas de Bebidas Calientes:', 14, 78)
@@ -383,7 +389,6 @@ function downloadPdf() {
     styles: { fontSize: 10 },
     headStyles: { fillColor: [255, 221, 89] }
   })
-
 
   // Bebidas Frías
   const yAfterHotDrinks = doc.lastAutoTable.finalY + 10
@@ -398,7 +403,6 @@ function downloadPdf() {
     headStyles: { fillColor: [255, 221, 89] }
   })
 
-
   // Sopas
   const yAfterColdDrinks = doc.lastAutoTable.finalY + 10
   doc.setFontSize(14)
@@ -411,7 +415,6 @@ function downloadPdf() {
     styles: { fontSize: 10 },
     headStyles: { fillColor: [255, 221, 89] }
   })
-
 
   // Gastos Detallados
   const yAfterSoups = doc.lastAutoTable.finalY + 10
@@ -426,29 +429,51 @@ function downloadPdf() {
     headStyles: { fillColor: [255, 221, 89] }
   })
 
-
-  // Ingresos Detallados
+  // Cierres de Caja Detallados
   const yAfterExpenses = doc.lastAutoTable.finalY + 10
   doc.setFontSize(14)
-  doc.text('Desglose Detallado de Ingresos:', 14, yAfterExpenses)
+  doc.text('Desglose Detallado de Cierres de Caja:', 14, yAfterExpenses)
   autoTable(doc, {
     startY: yAfterExpenses + 4,
-    head: [['Fecha', 'Descripción', 'Cantidad']],
-    body: incomesInPeriod.value.length ? incomesInPeriod.value.map(i => [formatDate(i.date), i.description || '-', formatCurrency(i.amount)]) : [['No hay ingresos', '', '']],
+    head: [
+      'Fecha',
+      'Efectivo',
+      'Transferencia',
+      'Data Austro',
+      'Data Fast',
+      'De Una'
+    ],
+    body: closesInPeriod.value.length
+      ? closesInPeriod.value.map(c => [
+          formatDate(c.date),
+          formatCurrency(c.cash),
+          formatCurrency(c.transfer),
+          formatCurrency(c.data_austro),
+          formatCurrency(c.data_fast),
+          formatCurrency(c.de_una),
+        ])
+      : [['No hay cierres de caja', '', '', '', '', '']],
     theme: 'grid',
     styles: { fontSize: 9 },
-    headStyles: { fillColor: [255, 221, 89] }
+    headStyles: { fillColor: [255, 221, 89] },
+    foot: [
+      [
+        'Total',
+        formatCurrency(closeTotals.cash),
+        formatCurrency(closeTotals.transfer),
+        formatCurrency(closeTotals.data_austro),
+        formatCurrency(closeTotals.data_fast),
+        formatCurrency(closeTotals.de_una),
+      ],
+    ],
   })
-
 
   doc.save(`reporte_semanal_${selectedWeek.value}.pdf`)
 }
 
-
 onMounted(() => {
   setCurrentWeek()
 })
-
 
 function setCurrentWeek() {
   const currentDate = new Date()
@@ -456,7 +481,6 @@ function setCurrentWeek() {
   const currentWeek = getISOWeek(currentDate)
   selectedWeek.value = `${currentYear}-W${currentWeek.toString().padStart(2, '0')}`
 }
-
 
 function getISOWeek(date) {
   const tempDate = new Date(date.getTime())
@@ -466,8 +490,6 @@ function getISOWeek(date) {
   return Math.ceil((((tempDate - yearStart) / 86400000) + 1) / 7)
 }
 </script>
-&nbsp;
-&nbsp;
 
 <style scoped>
 table {
@@ -491,5 +513,5 @@ tbody tr {
   table-layout: fixed;
 }
 </style>
-&nbsp;
-&nbsp;
+
+``` ⬤
